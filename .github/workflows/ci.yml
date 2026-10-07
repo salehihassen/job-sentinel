@@ -5,6 +5,8 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  # Lets images.yml gate publishing on the full CI suite.
+  workflow_call:
 
 permissions:
   contents: read

@@ -7,6 +7,7 @@ Every test injects temp profile/DB paths into ``create_app`` so the user's real
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
 from fastapi.testclient import TestClient
@@ -17,6 +18,8 @@ from job_sentinel.db.repository import JobRepository
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 def _client(tmp_path: Path) -> TestClient:
@@ -124,3 +127,20 @@ def test_build_with_profile_returns_pdf_or_503(tmp_path: Path) -> None:
     assert resp.status_code in (200, 503)
     if resp.status_code == 200:
         assert resp.headers["content-type"] == "application/pdf"
+
+
+def test_llm_config_put_reads_json_body(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression: request models defined inside create_app were unresolvable under
+    # postponed annotations, so FastAPI treated the body as a query param (422).
+    # The package re-exports the ``app`` instance, shadowing the submodule name.
+    app_module = importlib.import_module("job_sentinel.api.app")
+
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(app_module, "_update_env_file", captured.update)
+    resp = _client(tmp_path).put(
+        "/api/llm/config",
+        json={"chat": {"provider": "openai", "model": "gpt-x", "base_url": ""}},
+    )
+    assert resp.status_code == 200
+    assert captured["CHAT_PROVIDER"] == "openai"
+    assert captured["CHAT_MODEL"] == "gpt-x"

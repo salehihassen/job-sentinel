@@ -209,6 +209,22 @@ class ApplicationPatchRequest(BaseModel):
     source: str | None = Field(default=None)
 
 
+class _LLMSideInput(BaseModel):
+    provider: str = ""
+    model: str = ""
+    base_url: str = ""
+    api_key: str | None = None  # None = leave unchanged; "" = clear
+
+
+class LLMConfigPutRequest(BaseModel):
+    chat: _LLMSideInput = _LLMSideInput()
+    embed: _LLMSideInput = _LLMSideInput()
+
+
+class LLMTestRequest(BaseModel):
+    target: str  # "chat" | "embed"
+
+
 def _summary(p: Profile) -> ProfileSummary:
     return ProfileSummary(
         name=p.basics.name,
@@ -853,19 +869,6 @@ def create_app(
                 for pid, info in PROVIDER_DEFAULTS.items()
             ],
         }
-
-    class _LLMSideInput(BaseModel):
-        provider: str = ""
-        model: str = ""
-        base_url: str = ""
-        api_key: str | None = None  # None = leave unchanged; "" = clear
-
-    class LLMConfigPutRequest(BaseModel):
-        chat: _LLMSideInput = _LLMSideInput()
-        embed: _LLMSideInput = _LLMSideInput()
-
-    class LLMTestRequest(BaseModel):
-        target: str  # "chat" | "embed"
 
     @app.put("/api/llm/config")
     def llm_config_put(req: LLMConfigPutRequest, request: Request) -> dict[str, Any]:
